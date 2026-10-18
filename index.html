@@ -277,7 +277,7 @@ footer p{font-size:.82rem;color:var(--muted)}
 
 <script>
 (function(){
-  var SITE='https://mindbodylab.nlrhubs.com/#respira';
+  var SITE=(/^https?:$/.test(location.protocol)&&!/claude|anthropic/.test(location.hostname))?location.origin+location.pathname+'#respira':'https://mindbodylab.nlrhubs.com/#respira';
   var SHARE_TXT='Te comparto un minuto para respirar y hacer una pausa. MindBody Lab PR:';
   var orb=document.getElementById('orb'),cue=document.getElementById('cue'),btn=document.getElementById('breathBtn'),timer=document.getElementById('timer');
   var IN=4000,OUT=6000,PAUSE=1000,TOTAL=60000,MAX=2.2,start=0,raf=0,running=false;
@@ -313,20 +313,32 @@ footer p{font-size:.82rem;color:var(--muted)}
     try{navigator.clipboard.writeText(txt).then(function(){cb.textContent='Copiado'},sel)}catch(e){sel()}
   });
   var form=document.getElementById('intForm'),st=document.getElementById('formStatus');
-  // Endpoint se configura al publicar en el dominio final
-  var ENDPOINT=null;
+  var ENDPOINT='https://formsubmit.co/ajax/labmindbody@gmail.com';
   form.addEventListener('submit',function(e){
     e.preventDefault();
     var n=form.nombre.value.trim(),m=form.email.value.trim();
     if(!n||!/^\S+@\S+\.\S+$/.test(m)){st.hidden=false;st.textContent='Escriba su nombre y un correo válido para poder contactarle.';return}
-    st.hidden=false;
-    if(!ENDPOINT){
-      var pobl=[].slice.call(form.querySelectorAll('input[name=poblacion]:checked')).map(function(x){return x.value}).join(', ');
-      var body='Nombre: '+n+'\nEscuela u organización: '+form.organizacion.value+'\nCorreo: '+m+'\nTeléfono: '+form.telefono.value+'\nPoblación de interés: '+pobl+'\n\n'+form.mensaje.value;
-      location.href='mailto:labmindbody@gmail.com?subject='+encodeURIComponent('Interés en MindBody Lab — '+(form.organizacion.value||n))+'&body='+encodeURIComponent(body);
-      st.textContent='Se abrió su aplicación de correo con el mensaje listo. Solo tiene que enviarlo. Si no se abrió, escriba a labmindbody@gmail.com o llame al (785) 341-6786.';return}
-  });
-})();
+    var pobl=[].slice.call(form.querySelectorAll('input[name=poblacion]:checked')).map(function(x){return x.value}).join(', ');
+    var org=form.organizacion.value.trim();
+    var data={
+      'Nombre':n,'Escuela u organización':org,'Correo':m,'Teléfono':form.telefono.value.trim(),
+      'Población de interés':pobl,'Comentario':form.mensaje.value.trim(),
+      _subject:'Interés en MindBody Lab — '+(org||n),_replyto:m,_template:'table',_captcha:'false',_honey:''
+    };
+    var btn=form.querySelector('button[type=submit]');
+    btn.disabled=true;btn.textContent='Enviando…';st.hidden=true;
+    fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){return r.json().then(function(j){if(!r.ok||String(j.success)==='false')throw new Error(j.message||'error');return j})})
+      .then(function(){
+        form.reset();st.hidden=false;
+        st.textContent='¡Gracias! Recibimos su información y le escribiremos pronto.';
+        btn.textContent='Enviado';
+      })
+      .catch(function(){
+        btn.disabled=false;btn.textContent='Enviar';st.hidden=false;
+        st.textContent='No pudimos enviar el formulario en este momento. Escríbanos a labmindbody@gmail.com o llame al (785) 341-6786.';
+      });
+  });})();
 </script>
 
 </body>
